@@ -103,6 +103,7 @@ h1 {
     touch-action: none;
     border: 1px solid rgba(34, 211, 238, 0.3);
     box-shadow: 0 0 30px rgba(34, 211, 238, 0.15), 0 0 30px rgba(168, 85, 247, 0.1) inset;
+    width: 100%;
 }
 
 /* Scanlines overlay */
@@ -142,6 +143,7 @@ h1 {
     grid-gap: 15px;
     position: relative;
     z-index: 3; /* above .game-container::before/::after */
+    width: 100%;
 }
 
 .grid-cell {

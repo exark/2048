@@ -7,6 +7,46 @@ let gridSize = 4;
 let isAnimating = false;
 let newTiles = new Set(); // track tiles added this turn for appear animation
 
+// Debug overlay (enable with ?debug=1 or #debug)
+const DEBUG = /[?#&]debug(=1)?\b/i.test(location.search + location.hash);
+let debugEl = null;
+function ensureDebugEl() {
+    if (!DEBUG) return null;
+    if (!debugEl) {
+        debugEl = document.createElement('div');
+        debugEl.id = 'debug-overlay';
+        Object.assign(debugEl.style, {
+            position: 'fixed',
+            bottom: '8px',
+            left: '8px',
+            right: '8px',
+            maxHeight: '40%',
+            overflow: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            background: 'rgba(2,6,23,0.8)',
+            color: '#22d3ee',
+            border: '1px solid rgba(168,85,247,0.6)',
+            borderRadius: '6px',
+            padding: '6px 8px',
+            zIndex: 9999
+        });
+        document.body.appendChild(debugEl);
+    }
+    return debugEl;
+}
+function debugLog(msg) {
+    if (!DEBUG) return;
+    const el = ensureDebugEl();
+    if (!el) return;
+    const time = new Date().toLocaleTimeString();
+    const line = document.createElement('div');
+    line.textContent = `[${time}] ${msg}`;
+    el.appendChild(line);
+    // Trim lines
+    while (el.childNodes.length > 20) el.removeChild(el.firstChild);
+}
+
 // DOM Elements
 const gridContainer = document.querySelector('.grid-container');
 const scoreElement = document.getElementById('score');
@@ -114,10 +154,26 @@ function getGap() {
 // Compute tile size so tiles align with the placeholders
 function getTileSize() {
     const gap = getGap();
-    const containerWidth = gridContainer.clientWidth;
-    // There are (gridSize - 1) gaps inside the grid
+    // Prefer precise layout width
+    let width = gridContainer.getBoundingClientRect().width || gridContainer.clientWidth;
+    
+    // Fallback to parent container if needed
+    if (!width || width <= 0) {
+        const parent = document.querySelector('.game-container');
+        if (parent) {
+            const rect = parent.getBoundingClientRect();
+            const cs = getComputedStyle(parent);
+            const pl = parseFloat(cs.paddingLeft) || 0;
+            const pr = parseFloat(cs.paddingRight) || 0;
+            width = rect.width - pl - pr;
+        }
+    }
+    if (!width || width <= 0) width = 300; // last-resort fallback
+    
     const totalGaps = gap * (gridSize - 1);
-    return Math.floor((containerWidth - totalGaps) / gridSize);
+    const size = Math.max(10, Math.floor((width - totalGaps) / gridSize));
+    debugLog(`sizes: container=${Math.round(width)} gap=${gap} tileSize=${size}`);
+    return size;
 }
 
 // Update the score display
@@ -261,6 +317,8 @@ function renderTiles() {
     }
     // Clear new tiles tracker after rendering
     newTiles.clear();
+    const nonZero = grid.flat().filter(v => v !== 0).length;
+    debugLog(`rendered tiles: ${nonZero}`);
 }
 
 // Check if there are any valid moves left
@@ -318,6 +376,7 @@ function setupEventListeners() {
         if (gameOver) return;
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
+        debugLog(`touchstart x=${Math.round(touchStartX)} y=${Math.round(touchStartY)}`);
     }, { passive: true });
     
     gameContainer.addEventListener('touchend', e => {
@@ -335,12 +394,16 @@ function setupEventListeners() {
         if (Math.abs(dx) > Math.abs(dy)) {
             // Horizontal swipe
             if (Math.abs(dx) > minSwipeDistance) {
-                moved = dx > 0 ? moveTiles('right') : moveTiles('left');
+                const dir = dx > 0 ? 'right' : 'left';
+                moved = moveTiles(dir);
+                debugLog(`swipe ${dir} dx=${Math.round(dx)} moved=${moved}`);
             }
         } else {
             // Vertical swipe
             if (Math.abs(dy) > minSwipeDistance) {
-                moved = dy > 0 ? moveTiles('down') : moveTiles('up');
+                const dir = dy > 0 ? 'down' : 'up';
+                moved = moveTiles(dir);
+                debugLog(`swipe ${dir} dy=${Math.round(dy)} moved=${moved}`);
             }
         }
 
@@ -374,4 +437,13 @@ window.addEventListener('load', () => {
     
     // Initialize the game
     initGame();
+
+    // Re-render on resize/orientation changes so tiles stay aligned
+    let resizeRaf;
+    window.addEventListener('resize', () => {
+        cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(() => {
+            renderTiles();
+        });
+    });
 });
