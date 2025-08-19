@@ -82,8 +82,8 @@ function createTile(row, col, value, isNew = false, isMerged = false) {
     tile.style.width = `${tileSize}px`;
     tile.style.height = `${tileSize}px`;
     
-    // Set z-index based on value for layering
-    tile.style.zIndex = value;
+    // Ensure tiles are above overlay effects
+    tile.style.zIndex = 100; // keep above .game-container::before/::after
     
     // Add data attributes for tracking position and value
     tile.dataset.row = row;
@@ -331,23 +331,25 @@ function setupEventListeners() {
         const minSwipeDistance = 30; // Minimum distance to consider it a swipe
         
         // Determine the direction of the swipe
+        let moved = false;
         if (Math.abs(dx) > Math.abs(dy)) {
             // Horizontal swipe
             if (Math.abs(dx) > minSwipeDistance) {
-                if (dx > 0) {
-                    moveTiles('right');
-                } else {
-                    moveTiles('left');
-                }
+                moved = dx > 0 ? moveTiles('right') : moveTiles('left');
             }
         } else {
             // Vertical swipe
             if (Math.abs(dy) > minSwipeDistance) {
-                if (dy > 0) {
-                    moveTiles('down');
-                } else {
-                    moveTiles('up');
-                }
+                moved = dy > 0 ? moveTiles('down') : moveTiles('up');
+            }
+        }
+
+        // If a move happened, follow-up like keyboard: add tile, render, check game over
+        if (moved) {
+            addRandomTile();
+            renderTiles();
+            if (!hasValidMoves()) {
+                endGame();
             }
         }
     }, { passive: true });
