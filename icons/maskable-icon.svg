@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <!-- Full-bleed background for maskable safe area -->
+  <rect x="0" y="0" width="1024" height="1024" fill="#0b0f1a"/>
+  <rect x="32" y="32" width="960" height="960" fill="url(#g)" opacity="0.08"/>
+  <g>
+    <rect x="96" y="96" width="832" height="832" fill="url(#g)" opacity="0.22"/>
+  </g>
+  <g font-family="Rajdhani, Orbitron, Roboto, Arial, sans-serif" font-weight="800" text-anchor="middle">
+    <text x="512" y="600" font-size="420" fill="#22d3ee" opacity="0.95" style="paint-order: stroke; stroke: rgba(10,17,33,0.7); stroke-width: 20px;">2048</text>
+  </g>
+</svg>

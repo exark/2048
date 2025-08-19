@@ -1,0 +1,36 @@
+[build]
+publish = "."
+command = ""
+
+# Ensure the correct content type and avoid caching for PWA-critical files
+[[headers]]
+for = "/service-worker.js"
+  [headers.values]
+  Cache-Control = "no-cache"
+
+[[headers]]
+for = "/index.html"
+  [headers.values]
+  Cache-Control = "no-cache"
+
+[[headers]]
+for = "/manifest.webmanifest"
+  [headers.values]
+  Content-Type = "application/manifest+json; charset=utf-8"
+  Cache-Control = "no-cache"
+
+# Reasonable caching for assets
+[[headers]]
+for = "/icons/*"
+  [headers.values]
+  Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/style.css"
+  [headers.values]
+  Cache-Control = "public, max-age=86400"
+
+[[headers]]
+for = "/game.js"
+  [headers.values]
+  Cache-Control = "public, max-age=86400"
