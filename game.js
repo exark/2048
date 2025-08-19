@@ -354,9 +354,9 @@ function setupEventListeners() {
         }
     }, { passive: true });
     
-    // Prevent scrolling when swiping on the game
+    // Prevent page scrolling during swipe gestures while playing
     gameContainer.addEventListener('touchmove', e => {
-        if (gameOver) {
+        if (!gameOver) {
             e.preventDefault();
         }
     }, { passive: false });

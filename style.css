@@ -141,6 +141,7 @@ h1 {
     grid-template-columns: repeat(4, 1fr);
     grid-gap: 15px;
     position: relative;
+    z-index: 3; /* above .game-container::before/::after */
 }
 
 .grid-cell {

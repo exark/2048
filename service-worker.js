@@ -1,5 +1,5 @@
 /* Cyberpunk 2048 Service Worker */
-const CACHE_NAME = 'cyberpunk-2048-v1';
+const CACHE_NAME = 'cyberpunk-2048-v2';
 const FONT_CACHE = 'cyberpunk-2048-fonts-v1';
 const ASSETS = [
   '/',
@@ -40,8 +40,22 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Same-origin assets: cache-first with background refresh
+  // Same-origin assets
   if (url.origin === self.location.origin) {
+    // Network-first for critical assets to avoid stale code
+    const isCritical = request.destination === 'script' || request.destination === 'style' || request.destination === 'document';
+    if (isCritical) {
+      event.respondWith(
+        fetch(request).then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          return response;
+        }).catch(() => caches.match(request))
+      );
+      return;
+    }
+
+    // Cache-first for other same-origin assets with background refresh
     event.respondWith(
       caches.match(request).then(cached => {
         const networkFetch = fetch(request).then(response => {
@@ -49,7 +63,6 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
           return response;
         }).catch(() => cached);
-
         return cached || networkFetch;
       })
     );
