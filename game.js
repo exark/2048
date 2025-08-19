@@ -98,11 +98,14 @@ function addRandomTile() {
         }
     }
     
+    debugLog(`addRandomTile: empty=${emptyCells.length}`);
     // If there are empty cells, add a new tile
     if (emptyCells.length > 0) {
         const { row, col } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        grid[row][col] = Math.random() < 0.9 ? 2 : 4;
+        const val = Math.random() < 0.9 ? 2 : 4;
+        grid[row][col] = val;
         newTiles.add(`${row}-${col}`);
+        debugLog(`added tile ${val} at ${row},${col}`);
     }
 }
 
@@ -224,6 +227,7 @@ function handleKeyDown(e) {
 
 // Move tiles in the specified direction
 function moveTiles(direction) {
+    debugLog(`moveTiles dir=${direction}`);
     let moved = false;
     const newGrid = JSON.parse(JSON.stringify(grid));
     
@@ -269,7 +273,8 @@ function moveTiles(direction) {
         updateScore();
         renderTiles();
     }
-    
+    const count = newGrid.flat().filter(v => v !== 0).length;
+    debugLog(`moveTiles result moved=${moved} nonzeros=${count}`);
     return moved;
 }
 
@@ -371,25 +376,12 @@ function setupEventListeners() {
     let touchEndY = 0;
     
     const gameContainer = document.querySelector('.game-container');
-    
-    gameContainer.addEventListener('touchstart', e => {
-        if (gameOver) return;
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        debugLog(`touchstart x=${Math.round(touchStartX)} y=${Math.round(touchStartY)}`);
-    }, { passive: true });
-    
-    gameContainer.addEventListener('touchend', e => {
-        if (gameOver) return;
-        
-        touchEndX = e.changedTouches[0].clientX;
-        touchEndY = e.changedTouches[0].clientY;
-        
-        const dx = touchEndX - touchStartX;
-        const dy = touchEndY - touchStartY;
-        const minSwipeDistance = 30; // Minimum distance to consider it a swipe
-        
-        // Determine the direction of the swipe
+    const minSwipeDistance = 30; // Minimum distance to consider it a swipe
+    let inputLocked = false; // prevent double-processing
+
+    // Central swipe processor used by both Touch and Pointer events
+    function processSwipe(dx, dy) {
+        if (inputLocked) return;
         let moved = false;
         if (Math.abs(dx) > Math.abs(dy)) {
             // Horizontal swipe
@@ -406,27 +398,79 @@ function setupEventListeners() {
                 debugLog(`swipe ${dir} dy=${Math.round(dy)} moved=${moved}`);
             }
         }
-
-        // If a move happened, follow-up like keyboard: add tile, render, check game over
         if (moved) {
+            inputLocked = true;
             addRandomTile();
             renderTiles();
             if (!hasValidMoves()) {
                 endGame();
             }
+            // small delay to avoid handling multi-events for one gesture
+            setTimeout(() => { inputLocked = false; }, 120);
         }
-    }, { passive: true });
+    }
     
-    // Prevent page scrolling during swipe gestures while playing
-    gameContainer.addEventListener('touchmove', e => {
-        if (!gameOver) {
-            e.preventDefault();
-        }
-    }, { passive: false });
+    if (window.PointerEvent) {
+        // Prefer Pointer Events on modern mobile browsers
+        let pStartX = 0, pStartY = 0;
+        gameContainer.addEventListener('pointerdown', e => {
+            if (gameOver) return;
+            if (e.pointerType !== 'touch') return; // only handle touch pointers
+            pStartX = e.clientX;
+            pStartY = e.clientY;
+            try { gameContainer.setPointerCapture(e.pointerId); } catch {}
+            debugLog(`pointerdown x=${Math.round(pStartX)} y=${Math.round(pStartY)}`);
+        }, { passive: true });
+        gameContainer.addEventListener('pointerup', e => {
+            if (gameOver) return;
+            if (e.pointerType !== 'touch') return;
+            const dx = e.clientX - pStartX;
+            const dy = e.clientY - pStartY;
+            try { gameContainer.releasePointerCapture(e.pointerId); } catch {}
+            processSwipe(dx, dy);
+        }, { passive: true });
+        gameContainer.addEventListener('pointercancel', e => {
+            if (e.pointerType !== 'touch') return;
+            try { gameContainer.releasePointerCapture(e.pointerId); } catch {}
+            // allow next gesture
+            inputLocked = false;
+            debugLog('pointercancel');
+        });
+        gameContainer.addEventListener('lostpointercapture', e => {
+            if (e.pointerType !== 'touch') return;
+            debugLog('lostpointercapture');
+        });
+    } else {
+        // Fallback to Touch Events
+        gameContainer.addEventListener('touchstart', e => {
+            if (gameOver) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            debugLog(`touchstart x=${Math.round(touchStartX)} y=${Math.round(touchStartY)}`);
+        }, { passive: true });
+        
+        gameContainer.addEventListener('touchend', e => {
+            if (gameOver) return;
+            touchEndX = e.changedTouches[0].clientX;
+            touchEndY = e.changedTouches[0].clientY;
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+            processSwipe(dx, dy);
+        }, { passive: true });
+        
+        // Prevent page scrolling during swipe gestures while playing
+        gameContainer.addEventListener('touchmove', e => {
+            if (!gameOver) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    }
     
     // New game buttons
     newGameButton.addEventListener('click', initGame);
     tryAgainButton.addEventListener('click', initGame);
+    // Prevent long-press context menu from interfering
+    gameContainer.addEventListener('contextmenu', e => e.preventDefault());
 }
 
 // Start the game when the page loads
